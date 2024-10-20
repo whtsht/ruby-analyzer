@@ -21,19 +21,41 @@ pub enum Type {
     Function(Vec<ClassName>, ClassName),
 }
 
+pub type Identifier = String;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Instance {
+    id: Identifier,
+    ty: Type,
+}
+
+impl Instance {
+    pub fn new(id: Identifier, ty: Type) -> Self {
+        Self { id, ty }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Env {
-    instances: HashMap<String, Type>,
+    instances: Vec<Instance>,
     classes: HashMap<String, Class>,
 }
 
 impl Env {
-    pub fn new(instances: HashMap<String, Type>, classes: HashMap<String, Class>) -> Self {
+    pub fn new(instances: Vec<Instance>, classes: HashMap<String, Class>) -> Self {
         Self { instances, classes }
     }
 
+    pub fn add_instance(&mut self, name: &str, ty: Type) {
+        self.instances.push(Instance::new(name.to_string(), ty));
+    }
+
     pub fn get_instance_type(&self, name: &str) -> Option<&Type> {
-        self.instances.get(name)
+        self.instances
+            .iter()
+            .rev()
+            .find(|instance| instance.id == name)
+            .map(|instance| &instance.ty)
     }
 
     pub fn get_class(&self, name: &str) -> Option<&Class> {
@@ -56,14 +78,14 @@ macro_rules! env {
         use std::collections::HashMap;
         use $crate::typecheck::{Class, Env, Type};
 
-        let mut instances = HashMap::new();
+        let mut instances = Vec::new();
         let mut classes = HashMap::new();
 
         $(
-            instances.insert(
+            instances.push(Instance::new(
                 stringify!($instance_name).to_string(),
                 Type::Variable(stringify!($instance_type).to_string())
-            );
+            ));
         )*
 
         $(
@@ -110,7 +132,7 @@ fn default_class() -> HashMap<String, Class> {
 impl Default for Env {
     fn default() -> Self {
         Self {
-            instances: HashMap::new(),
+            instances: Vec::new(),
             classes: default_class(),
         }
     }
@@ -145,7 +167,7 @@ pub fn typecheck(node: &Node, env: &mut Env) -> TypecheckResult<Type> {
         }
         NodeType::Assignment(name, node) => {
             let ty = typecheck(node.as_ref(), env)?;
-            env.instances.insert(name.clone(), ty.clone());
+            env.add_instance(name, ty.clone());
             Ok(ty)
         }
     }

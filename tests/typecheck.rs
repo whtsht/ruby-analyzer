@@ -10,6 +10,8 @@ fn test_expressions() {
         b = "hello"
         c = d = e = f = g = h = 20
         i = b
+        b = 2
+        j = b
     "#;
     let nodes = parse(input).unwrap();
     let mut env = Env::default();
@@ -23,7 +25,7 @@ fn test_expressions() {
     );
     assert_eq!(
         env.get_instance_type("b"),
-        Some(&Type::Variable("String".to_string()))
+        Some(&Type::Variable("Integer".to_string()))
     );
     ["c", "d", "e", "f", "g", "h"].iter().for_each(|name| {
         assert_eq!(
@@ -34,5 +36,9 @@ fn test_expressions() {
     assert_eq!(
         env.get_instance_type("i"),
         Some(&Type::Variable("String".to_string()))
+    );
+    assert_eq!(
+        env.get_instance_type("j"),
+        Some(&Type::Variable("Integer".to_string()))
     );
 }
