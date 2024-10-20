@@ -116,10 +116,33 @@ impl Default for Env {
     }
 }
 
-pub fn typecheck(node: &Node, env: &mut Env) -> Result<Type, String> {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TypecheckError {
+    node: Node,
+    kind: TypecheckErrorKind,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum TypecheckErrorKind {
+    UndefinedVariable(String),
+}
+
+pub type TypecheckResult<T> = Result<T, TypecheckError>;
+
+pub fn typecheck(node: &Node, env: &mut Env) -> TypecheckResult<Type> {
     match &node.node_type {
         NodeType::Integer(_) => Ok(Type::Variable("Integer".to_string())),
         NodeType::String(_) => Ok(Type::Variable("String".to_string())),
+        NodeType::Variable(name) => {
+            if let Some(ty) = env.get_instance_type(name) {
+                Ok(ty.clone())
+            } else {
+                Err(TypecheckError {
+                    node: node.clone(),
+                    kind: TypecheckErrorKind::UndefinedVariable(name.clone()),
+                })
+            }
+        }
         NodeType::Assignment(name, node) => {
             let ty = typecheck(node.as_ref(), env)?;
             env.instances.insert(name.clone(), ty.clone());

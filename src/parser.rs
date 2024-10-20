@@ -32,6 +32,7 @@ impl Location {
 pub enum NodeType {
     Integer(i64),
     String(String),
+    Variable(String),
     Assignment(String, Box<Node>),
 }
 
@@ -68,6 +69,11 @@ fn parse_string(input: Span) -> IResult<Span, NodeType> {
     Ok((input, NodeType::String(content.to_string())))
 }
 
+fn parse_variable(input: Span) -> IResult<Span, NodeType> {
+    let (input, var_name) = alphanumeric1(input)?;
+    Ok((input, NodeType::Variable(var_name.to_string())))
+}
+
 fn parse_assignment(input: Span) -> IResult<Span, NodeType> {
     let (input, (var_name, expr)) = separated_pair(
         alphanumeric1,
@@ -81,7 +87,12 @@ fn parse_assignment(input: Span) -> IResult<Span, NodeType> {
 }
 
 fn parse_expression(input: Span) -> IResult<Span, Node> {
-    with_location(alt((parse_assignment, parse_string, parse_integer)))(input)
+    with_location(alt((
+        parse_assignment,
+        parse_string,
+        parse_integer,
+        parse_variable,
+    )))(input)
 }
 
 fn parse_expressions(input: Span) -> IResult<Span, Vec<Node>> {
@@ -155,6 +166,14 @@ mod tests {
                     })
                 )
             ))
+        );
+    }
+
+    #[test]
+    fn test_variable() {
+        assert_eq!(
+            parse_variable(Span::new("x")),
+            Ok((span(1, 1, ""), NodeType::Variable("x".to_string())))
         );
     }
 
