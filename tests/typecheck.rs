@@ -14,6 +14,7 @@ fn test_expressions() {
         j = b
     "#;
     let nodes = parse(input).unwrap();
+    println!("{:?}", nodes);
     let mut env = Env::default();
     nodes.iter().for_each(|node| {
         typecheck(node, &mut env).unwrap();
