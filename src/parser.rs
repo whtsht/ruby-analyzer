@@ -15,6 +15,15 @@ pub struct Node {
     pub location: Location,
 }
 
+impl Node {
+    pub fn new(node_type: NodeType, (line, column): (u32, usize)) -> Self {
+        Self {
+            node_type,
+            location: Location::new(line, column),
+        }
+    }
+}
+
 pub type Span<'a> = LocatedSpan<&'a str>;
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
@@ -35,6 +44,28 @@ pub enum NodeType {
     String(String),
     Variable(String),
     Assignment(String, Box<Node>),
+}
+
+#[macro_export]
+macro_rules! node {
+    (Integer { value: $value:expr, location: ($line:expr, $column:expr) }) => {
+        Node::new(NodeType::Integer($value), ($line, $column))
+    };
+
+    (String { value: $value:expr, location: ($line:expr, $column:expr) }) => {
+        Node::new(NodeType::String($value.to_string()), ($line, $column))
+    };
+
+    (Variable { name: $name:expr, location: ($line:expr, $column:expr) }) => {
+        Node::new(NodeType::Variable($name.to_string()), ($line, $column))
+    };
+
+    (Assignment { name: $name:expr, location: ($line:expr, $column:expr), value: $($value:tt)+ }) => {
+        Node::new(
+            NodeType::Assignment($name.to_string(), Box::new(node!($($value)+))),
+            ($line, $column),
+        )
+    };
 }
 
 fn location(input: Span) -> IResult<Span, Location> {
@@ -160,16 +191,14 @@ mod tests {
             parse_assignment(Span::new("x=y=123")).unwrap().1,
             NodeType::Assignment(
                 "x".to_string(),
-                Box::new(Node {
-                    node_type: NodeType::Assignment(
-                        "y".to_string(),
-                        Box::new(Node {
-                            node_type: NodeType::Integer(123),
-                            location: Location::new(1, 5)
-                        })
-                    ),
-                    location: Location::new(1, 3)
-                })
+                Box::new(node!(Assignment {
+                    name: "y",
+                    location: (1, 3),
+                    value: Integer {
+                        value: 123,
+                        location: (1, 5)
+                    }
+                }))
             )
         );
     }
@@ -186,16 +215,14 @@ mod tests {
     fn test_expression() {
         assert_eq!(
             parse_expression(Span::new("x = 123")).unwrap().1,
-            Node {
-                node_type: NodeType::Assignment(
-                    "x".to_string(),
-                    Box::new(Node {
-                        node_type: NodeType::Integer(123),
-                        location: Location::new(1, 5)
-                    })
-                ),
-                location: Location::new(1, 1)
-            }
+            node!(Assignment {
+                name: "x",
+                location: (1, 1),
+                value: Integer {
+                    value: 123,
+                    location: (1, 5)
+                }
+            })
         );
     }
 
@@ -204,26 +231,22 @@ mod tests {
         assert_eq!(
             parse_expressions(Span::new("a = 1; b = 2")).unwrap().1,
             vec![
-                Node {
-                    node_type: NodeType::Assignment(
-                        "a".to_string(),
-                        Box::new(Node {
-                            node_type: NodeType::Integer(1),
-                            location: Location::new(1, 5)
-                        })
-                    ),
-                    location: Location::new(1, 1)
-                },
-                Node {
-                    node_type: NodeType::Assignment(
-                        "b".to_string(),
-                        Box::new(Node {
-                            node_type: NodeType::Integer(2),
-                            location: Location::new(1, 12)
-                        })
-                    ),
-                    location: Location::new(1, 8)
-                }
+                node!(Assignment {
+                    name: "a",
+                    location: (1, 1),
+                    value: Integer {
+                        value: 1,
+                        location: (1, 5)
+                    }
+                }),
+                node!(Assignment {
+                    name: "b",
+                    location: (1, 8),
+                    value: Integer {
+                        value: 2,
+                        location: (1, 12)
+                    }
+                })
             ]
         );
     }
@@ -236,26 +259,22 @@ mod tests {
                 .unwrap()
                 .1,
             vec![
-                Node {
-                    node_type: NodeType::Assignment(
-                        "a".to_string(),
-                        Box::new(Node {
-                            node_type: NodeType::Integer(1),
-                            location: Location::new(1, 5)
-                        })
-                    ),
-                    location: Location::new(1, 1)
-                },
-                Node {
-                    node_type: NodeType::Assignment(
-                        "b".to_string(),
-                        Box::new(Node {
-                            node_type: NodeType::Integer(2),
-                            location: Location::new(2, 5)
-                        })
-                    ),
-                    location: Location::new(2, 1)
-                }
+                node!(Assignment {
+                    name: "a",
+                    location: (1, 1),
+                    value: Integer {
+                        value: 1,
+                        location: (1, 5)
+                    }
+                }),
+                node!(Assignment {
+                    name: "b",
+                    location: (2, 1),
+                    value: Integer {
+                        value: 2,
+                        location: (2, 5)
+                    }
+                })
             ]
         );
     }
