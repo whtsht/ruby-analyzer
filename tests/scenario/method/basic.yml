@@ -1,0 +1,18 @@
+ruby:
+  code: |
+    def say_hello
+       "hello"
+    end
+
+    def return_integer
+      ret = 0
+      ret
+    end
+
+type:
+  say_hello:
+    params: []
+    return: "String"
+  return_integer:
+    params: []
+    return: "Integer"
