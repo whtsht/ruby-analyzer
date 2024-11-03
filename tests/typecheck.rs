@@ -14,7 +14,7 @@ pub struct Scenario<'pr> {
 fn run_scenario(ruby_node: Node, methods: HashMap<String, Method>, _errors: Vec<TypeError>) {
     let mut checker = TypeChecker::new();
     checker.visit(&ruby_node);
-    let object = checker.get_object("Object").unwrap().as_sig().unwrap();
+    let object = checker.get_object("#main").unwrap().as_sig().unwrap();
     for (name, ty) in methods {
         assert_eq!(object.get(&name), Some(&ty));
     }

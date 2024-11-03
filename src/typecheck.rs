@@ -75,13 +75,14 @@ pub struct TypeChecker {
     objects: HashMap<String, Type>,
     type_stack: Vec<Type>,
     local_variables: Vec<HashMap<String, Type>>,
+    params: Vec<String>,
     errors: Vec<TypeError>,
 }
 
 impl TypeChecker {
     pub fn new() -> Self {
         let mut objects = HashMap::new();
-        objects.insert("Object".to_string(), Type::sig([]));
+        objects.insert("#main".to_string(), Type::sig([]));
         let mut types = HashMap::new();
         types.insert(
             "String".to_string(),
@@ -98,6 +99,7 @@ impl TypeChecker {
             objects,
             type_stack: Vec::new(),
             local_variables: Vec::new(),
+            params: Vec::new(),
             errors: Vec::new(),
         }
     }
@@ -119,21 +121,33 @@ impl Default for TypeChecker {
 
 impl<'pr> Visit<'pr> for TypeChecker {
     fn visit_def_node(&mut self, node: &ruby_prism::DefNode<'pr>) {
-        if let Some(body) = node.body() {
-            self.local_variables.push(HashMap::new());
-            self.visit(&body);
-            self.local_variables.pop();
-        }
-
+        self.local_variables.push(HashMap::new());
         for param in node.parameters().iter() {
             self.visit(&param.as_node());
         }
+        if let Some(body) = node.body() {
+            self.visit(&body);
+        }
+        let args = self
+            .params
+            .iter()
+            .map(|param| {
+                self.local_variables
+                    .last()
+                    .unwrap()
+                    .get(param)
+                    .unwrap()
+                    .clone()
+            })
+            .collect::<Vec<_>>();
+        self.params.clear();
+        self.local_variables.pop();
 
-        if let Some(Type::Signature(sig)) = self.objects.get_mut("Object") {
+        if let Some(Type::Signature(sig)) = self.objects.get_mut("#main") {
             sig.insert(
                 to_string(node.name()),
                 Method {
-                    args: vec![],
+                    args,
                     ret: self.type_stack.pop().unwrap(),
                 },
             );
@@ -159,10 +173,11 @@ impl<'pr> Visit<'pr> for TypeChecker {
     }
 
     fn visit_required_parameter_node(&mut self, node: &ruby_prism::RequiredParameterNode<'pr>) {
-        println!(
-            "required parameter: {:?}",
-            str::from_utf8(node.name().as_slice()).unwrap().to_string()
-        );
+        self.local_variables
+            .last_mut()
+            .unwrap()
+            .insert(to_string(node.name()), Type::alias("Object"));
+        self.params.push(to_string(node.name()));
     }
 
     fn visit_string_node(&mut self, _: &ruby_prism::StringNode<'pr>) {

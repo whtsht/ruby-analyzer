@@ -9,6 +9,10 @@ ruby:
       ret
     end
 
+    def id(x)
+      x
+    end
+
 type:
   say_hello:
     params: []
@@ -16,3 +20,6 @@ type:
   return_integer:
     params: []
     return: "Integer"
+  id:
+    params: ["Object"]
+    return: "Object"
